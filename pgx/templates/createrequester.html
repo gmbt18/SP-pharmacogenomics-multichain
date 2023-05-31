@@ -1,0 +1,40 @@
+{% extends 'index.html' %}
+{% block title %}Create User{% endblock title %}
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="form-container bg-white shadow-lg p-5 rounded">
+                <h4 class="text-center mb-4">Create Account</h4>
+                <form method="POST" class="user">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <input class="form-control form-control-user" type="text" name="username" placeholder="Username" required />
+                    </div>
+                    <div class="mb-3">
+                        <input id="email" class="form-control form-control-user" name="name" type="text" placeholder="Name" required />
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-6 mb-3 mb-sm-0">
+                            <input id="password" class="form-control form-control-user" type="password" name="password1" placeholder="Password" required />
+                        </div>
+                        <div class="col-sm-6">
+                            <input id="verifyPassword" class="form-control form-control-user" type="password" name="password2" placeholder="Repeat Password" required />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <p id="usernameErrorMsg" class="text-danger" style="display: none;">Paragraph</p>
+                            <p id="passwordErrorMsg" class="text-danger" style="display: none;">Password does not match</p>
+                        </div>
+                    </div>
+                    <button id="submitBtn" class="btn btn-primary btn-user w-100" type="submit">Register Account</button>
+                    <hr />
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+

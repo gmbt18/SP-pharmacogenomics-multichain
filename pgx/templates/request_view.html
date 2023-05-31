@@ -1,0 +1,162 @@
+{% extends 'index.html' %}
+{% block title %}Request Data{% endblock title %}
+{% block content %}
+
+{% block extracss %}
+<style>
+    .scrollable-checkbox-list {
+        max-height: 500px; /* Set the maximum height for the scrollable list */
+        overflow-y: auto; /* Enable vertical scrolling */
+    }
+    
+    .button-container {
+        margin-top: 20px; /* Add appropriate margin for spacing */
+    }
+</style>
+
+{% endblock extracss %}
+
+<div class="container py-5 py-xl-5">
+    <h1 class="text-center pb-4">Request Data</h1>
+    {% if pd %}
+    <form method="get" action="{% url 'request_view' %}">
+        <div class="row mx-5 mx-5">
+            <div class="col">
+                <label for="patient_address">Gene:</label>
+                <select class="form-select" name="gene_id" aria-label="Default select example">
+                    <option value = "None" selected disabled hidden>-----------</option>
+                    {%for gene in genes%}
+                    <option value="{{gene}}">{{gene}}</option>
+                    {%endfor%}
+                </select>
+            </div>
+            <div class="col">
+                <label for="access_level">Drug:</label>
+                <select class="form-select" name="drug_id" aria-label="Default select example">
+                    <option value = "None" selected disabled hidden>-----------</option>
+                    {%for drug in drugs%}
+                    <option value="{{drug}}">{{drug}}</option>
+                    {%endfor%}
+                </select>
+            </div>
+        </div>
+        <div class = "row-3 mx-3">
+          <button class="btn btn-success text-center mx-5 my-2 " type="submit">Filter</button>
+        </div>
+    </form>
+    
+
+    
+
+    <form method="post" action="{% url 'request_data' %}">
+      {% csrf_token %}
+      <div class="row">
+        <div class="col-md-8 offset-md-2">
+          <div class="scrollable-checkbox-list">
+            {% for patient, d in pd %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="patient-{{ forloop.counter }}" name="selected_patients" value="{{ patient.address }}|{{ d }}">
+              <label class="form-check-label" for="patient-{{ forloop.counter }}">
+                <h5>{{ d }}</h5>
+                <h7><strong>Gene:</strong> {{ patient.gene }}</h7>
+              </label>
+            </div>
+            <hr class="my-5" />
+            {% endfor %}
+          </div>
+          <div class="button-container">
+            <a class="btn btn-warning text-center border border-dark" href="#" role="button" data-bs-toggle="modal" data-bs-target="#requestAccessModal">Request Access</a>
+          </div>
+        </div>
+        <div class="modal fade" id="requestAccessModal"  tabindex="-1" aria-labelledby="requestAccessModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <h6 class="modal-title" id="requestAccessModalLabel">Request Access</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <form id="requestAccessForm" method="post" action="{% url 'request_data' %}">
+                      {% csrf_token %}
+                      <div class="form-group">
+                        <label for="purpose">Purpose:</label>
+                        <input type="text" class="form-control" id="purpose" name="purpose" required>
+                      </div>
+                      <input type="hidden" name="selected_patients" value="" id="selectedPatientsInput">
+                      <div class="modal-footer">
+                        <button type="submit" id = "btn" class="btn btn-primary">Request Access</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                  
+              </div>
+          </div>
+      </div>
+      </div>
+    </form>
+
+
+
+    {%else%}
+    <div class="row justify-content-end">
+        <div class="col">
+            <h3>No data to request</h3>
+        </div>
+    </div>  
+    {%endif%}
+</div>
+
+{% endblock content %}
+
+{% block extrascripts %}
+<script>
+  $(document).ready(function() {
+    $('#requestAccessModal').on('shown.bs.modal', function() {
+      $('#purpose').focus(); // Focus on the purpose input field when the modal is shown
+      updateRequestButton(); // Update the state of the request button on modal shown
+    });
+    
+    // Update the state of the request button whenever the purpose input value changes
+    $('#purpose').on('input', function() {
+      updateRequestButton();
+    });
+    
+    $('#requestAccessForm').submit(function(e) {
+      e.preventDefault(); // Prevent the form from submitting normally
+      
+      var selectedPatients = [];
+      $('input[name="selected_patients"]:checked').each(function() {
+        selectedPatients.push($(this).val());
+      });
+      
+      var purpose = $('#purpose').val();
+      
+      // Set the selected patients value in the hidden input field
+      $('#selectedPatientsInput').val(selectedPatients.join(','));
+      
+      // Perform any validation or additional checks on the purpose if needed
+      
+      // Update the form action URL with the purpose value
+      $(this).attr('action', $(this).attr('action') + '?purpose=' + encodeURIComponent(purpose));
+      
+      // Submit the form
+      this.submit();
+    });
+    
+    // Function to update the state of the request button based on the purpose input value
+    function updateRequestButton() {
+      var purpose = document.getElementById("purpose").value;
+      var requestButton = $('#requestAccessForm button[type="submit"]');
+      
+      if (purpose == '') {
+        document.getElementById("btn").disabled = true;
+      } else {
+        document.getElementById("btn").disabled = false; // Disable the request button
+      }
+    }
+  });
+</script>
+
+
+{% endblock extrascripts %}

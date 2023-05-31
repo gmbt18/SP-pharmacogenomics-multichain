@@ -1,0 +1,38 @@
+{% extends 'index.html' %}
+{% block title %}Profile{% endblock title %}
+{% block content %}
+
+<div class="container w-50 my-5">
+    <div class="row px-4 pb-3 shadow-sm border">
+        <h2 class="py-4">Profile</h2>
+        <div class="col-6">
+            <div class="mb-3">
+                <strong><label class="form-label">Name:</label></strong>
+                {{ name }}
+            </div>
+            <div class="mb-3">
+                <strong><label class="form-label">Address:</label></strong>
+                {{ address }}
+            </div>
+            <div class="mb-3">
+                <strong><label class="form-label">Role:</label></strong>
+                {{ role }}
+            </div>
+        </div>
+        <div class="col-4">
+            {% if role == 'requester' %}
+            <div class="mb-3">
+                <strong><label class="form-label">Organization:</label></strong>
+                {{ organization }}
+            </div>
+            {% elif role == 'organization' %}
+            <div class="mb-3">
+                <strong><label class="form-label">Status:</label></strong>
+                {{ status }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

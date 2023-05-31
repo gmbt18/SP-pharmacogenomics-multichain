@@ -1,0 +1,61 @@
+{% extends 'index.html' %}
+{% block title %}View Data{% endblock title %}
+{% block content %}
+    
+<div class="container py-5 py-xl-5">
+    <h1 class="text-center pb-4">View Data</h1>
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            {%if data %}
+                {%for d in data%}
+                <div class="row justify-content-end">
+                    <div class="col">
+                            <h5>{{d.address}}_{{d.drugid}}</h5>
+
+                    </div>
+                    <div class="col">
+                        <div class="d-flex justify-content-end">
+                            <a class="btn btn-warning mx-5 border border-dark" href="#" role="button" data-bs-toggle="modal" data-bs-target="#dataModal{{ forloop.counter }}">View Data</a>
+                        </div>
+                        
+                    </div>
+                </div>
+                <hr class="my-5" />
+
+                <div class="modal fade" id="dataModal{{ forloop.counter }}" tabindex="-1" aria-labelledby="dataModalLabel{{ forloop.counter }}" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h6 class="modal-title" id="dataModalLabel{{ forloop.counter }}">Data: {{ d.address }}_{{ d.drugid }}</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p><strong>Patient:</strong> {{d.name}}</p>
+                                <p><strong>Address:</strong> {{d.address}}</p>
+                                <p><strong>Gene:</strong> {{d.gene}}</p>
+                                <p><strong>Drug ID:</strong> {{d.drugid}}</p>
+                                <p><strong>Interaction Score:</strong> {{d.iscore}}</p>
+                                <p><strong>Annotations:</strong> {{d.annot}}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% endfor %}
+            {%else%}
+            <div class="row justify-content-end">
+                <div class="col">
+                    <h3>No patient data to view</h3>
+                </div>
+            </div>  
+            <hr class="my-5" />
+            {%endif%}
+            
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

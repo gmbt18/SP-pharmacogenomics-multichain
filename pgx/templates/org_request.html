@@ -1,0 +1,43 @@
+{% extends 'index.html' %}
+{% block title %}Check Join Requests{% endblock title %}
+{% block content %}
+
+<div class = "container-xl px-1 pt-4">
+    <h1 class="text-center pb-4">Check Requests</h1>
+    {% if requests %}
+    <table id ='booking-table' class="table ">
+        <thead>
+        <tr>
+            <th scope="col" class = "text-center">Organization</th>
+            <th scope="col"></th>
+            
+        </tr>
+        </thead>
+        <tbody>
+        {% for req in requests%}
+        <tr>
+            <td class = "py-3 text-center">{{req.name}}</td>
+            <td class = "py-3 pl-5 text-center">
+                <form method="post" action="{% url 'grant_permissions' req.name req.address %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="name" value="{{ req.name }}">
+                    <input type="hidden" name="address" value="{{ req.address }}">
+                    <button class="btn btn-success text-center" type="submit">Grant Permissions</button>
+                </form>
+            </td>
+            
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {%else%}
+    <div class="row justify-content-end">
+        <div class="col text-center">
+            <h4>No requests at the moment</h4>
+        </div>
+    </div>  
+    <hr class="my-5" />
+    {%endif%}
+
+</div>
+{% endblock content %}
