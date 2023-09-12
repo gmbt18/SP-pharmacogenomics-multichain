@@ -53,11 +53,11 @@
       <div class="row">
         <div class="col-md-8 offset-md-2">
           <div class="scrollable-checkbox-list">
-            {% for patient, d in pd %}
+            {% for patient in pd %}
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="patient-{{ forloop.counter }}" name="selected_patients" value="{{ patient.address }}|{{ d }}">
+              <input class="form-check-input" type="checkbox" id="patient-{{ forloop.counter }}" name="selected_patients" value="{{ patient.address }}|{{ patient.dataid }}">
               <label class="form-check-label" for="patient-{{ forloop.counter }}">
-                <h5>{{ d }}</h5>
+                <h5>{{ patient.dataid }}</h5>
                 <h7><strong>Gene:</strong> {{ patient.gene }}</h7>
               </label>
             </div>

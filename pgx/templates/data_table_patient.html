@@ -10,8 +10,8 @@
                 {%for d in data%}
                 <div class="row justify-content-end">
                     <div class="col">
-                        <h5>{{d.address}}_{{d.drugid}}</h5>
-                        <h7><strong>Gene:</strong> {{ d.gene }}</h7>
+                            <h5>{{d.address}}_{{d.drugid}}</h5>
+                            <h7><strong>Gene:</strong> {{ d.gene}}</h7>
                     </div>
                     <div class="col">
                         <div class="d-flex justify-content-end">
@@ -26,7 +26,7 @@
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h6 class="modal-title" id="dataModalLabel{{ forloop.counter }}">Data: {{ d.address }}_{{ d.drugid }}</h6>
+                                <h6 class="modal-title" id="dataModalLabel{{ forloop.counter }}">Data: {{ d.address }}_{{ d.gene }}</h6>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
@@ -45,9 +45,6 @@
                 </div>
                 
                 {% endfor %}
-            <h8>Click the button below to download the accessed data as a PDF:</h8>
-            <br>
-            <a href="{% url 'download_data' %}" download class="btn btn-primary my-2">Download Data</a>
             {%else%}
             <div class="row justify-content-end">
                 <div class="col">
@@ -56,7 +53,6 @@
             </div>  
             <hr class="my-5" />
             {%endif%}
-
             
         </div>
     </div>

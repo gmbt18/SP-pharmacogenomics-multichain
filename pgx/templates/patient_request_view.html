@@ -14,6 +14,7 @@
             <th scope="col" class = "text-center">Data</th>
             <th scope="col" class = "text-center">Purpose</th>
             <th scope="col"></th>
+            <th scope="col"></th>
             
         </tr>
         </thead>
@@ -28,6 +29,9 @@
             <td class = "py-3 pl-5 text-center">
                 <a class="btn btn-success text-center border border-dark" href="#" role="button" data-bs-toggle="modal" data-bs-target="#grantModal">Grant</a>
             </td>
+            <td class = "py-3 pl-5 text-center">
+                <a class="btn btn-danger text-center border border-dark" href="#" role="button" data-bs-toggle="modal" data-bs-target="#denyModal">Deny</a>
+            </td>
         </tr>
 
         <!-- Request modal -->
@@ -40,15 +44,37 @@
                         </div>
                         <div class="modal-body">
                            
-                            <p>    I hereby grant access to my pharmacogenomic data to <strong>{{req.name}}</strong> for the purpose of "<strong>{{req.purpose}}</strong>"". I understand that my data will be used in accordance with all applicable privacy laws and regulations, and will only be accessed by authorized individuals involved in my healthcare.</p>
+                            <p>    I hereby grant access to my pharmacogenomic data to <strong>{{req.organization}}</strong> for the research/clinical trial "<strong>{{req.purpose}}</strong>"". I understand that my data will be used in accordance with all applicable privacy laws and regulations, and will only be accessed by authorized individuals involved in my healthcare.</p>
         
                             <p>I acknowledge that granting this access is voluntary, and I have been provided with sufficient information about the purpose and potential risks of sharing my data. I understand that I have the right to revoke this access at any time.</p>
                             
                             <p>By clicking the "Grant Access" button below, I consent to the above terms and conditions.</p>
                         <div class="modal-footer"> 
-                            <form method="post" action="{% url 'grant_access' req.address req.data req.purpose %}">
+                            <form method="post" action="{% url 'grant_access' req.organization req.data req.purpose %}">
                                 {% csrf_token %}
+                                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancel</button>
                                 <button class="btn btn-success text-center" type="submit">Grant Access</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="denyModal" tabindex="-1" role="dialog" aria-labelledby="denyModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="denyModalLabel">Deny Access</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                           
+                            <p>  Are you sure you want to deny this user?</p>
+                        <div class="modal-footer"> 
+                            <form method="post" action="{% url 'deny_access' req.organization req.data req.purpose %}">
+                                {% csrf_token %}
+                                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
+                                <button class="btn btn-success text-center" type="submit">Yes</button>
                             </form>
                         </div>
                     </div>

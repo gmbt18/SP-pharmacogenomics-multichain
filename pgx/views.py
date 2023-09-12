@@ -1,6 +1,8 @@
 import binascii
 import json
-from django.http import JsonResponse, HttpResponseRedirect
+import pandas as pd
+import csv
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.contrib import messages
 from django.shortcuts import redirect, render
@@ -54,12 +56,22 @@ def register_user(request):
         if role == 'Patient':
             profile_data = f"{name}:{address}"
             profile_data_hex = binascii.hexlify(profile_data.encode()).decode()
-            grant_requester_patient(address)
+            grant_patient_perm(address)
             publish_to_stream_with_offchain_data('patients', address, profile_data_hex)
+            request.session['user'] = username
+            request.session['role'] = role
+            request.session['address'] = address
+            messages.success(request, "Your account has been successfully registered.")
+            return redirect('home')
         elif role == 'Auditor':
             profile_data = f"{name}:{address}"
             profile_data_hex = binascii.hexlify(profile_data.encode()).decode()
             publish_to_stream_with_offchain_data('auditors', address, profile_data_hex)
+            request.session['user'] = username
+            request.session['role'] = role
+            request.session['address'] = address
+            messages.success(request, "Your account has been successfully registered.")
+            return redirect('home')
         elif role == 'organization':
             profile_data = f"{name}:{address}"
             profile_data_hex = binascii.hexlify(profile_data.encode()).decode()
@@ -67,9 +79,14 @@ def register_user(request):
             req_hex = binascii.hexlify(json.dumps(req_data).encode()).decode()
             publish_to_stream_with_offchain_data('organizations', address, profile_data_hex)
             publish_to_stream_with_offchain_data('org_request', address, req_hex)
-        
-        messages.success(request, "Your account has been successfully registered.")
-        return redirect('login')
+            request.session['user'] = username
+            request.session['role'] = role
+            request.session['address'] = address
+            messages.success(request, "Your account has been successfully registered.")
+            return redirect('home')
+        else:
+            messages.error(request, "Please select a role.")
+            return redirect('register_user')
     return render(request, 'register.html')
 
 def profile(request):
@@ -217,7 +234,7 @@ def authenticate_user(request):
                 request.session['address'] = address
                 # Redirect user to home page
                 messages.success(request, "You are now logged in as " + str(address))
-                return HttpResponseRedirect(reverse('home')) # replace 'home' with the name of your home view
+                return HttpResponseRedirect(reverse('home'))
             else:
                 messages.error(request,"Invalid password!")
                 return redirect('login')
@@ -233,18 +250,29 @@ def upload_data(request):
     user = request.session.get('user')
     orgadd = request.session.get('address')
     status = ""
-    if role == "organization":
-        status = org_status(orgadd)
     org = get_user_data('organizations', user)
     if org:
         org = binascii.unhexlify(org).decode()
-    if request.method == 'POST':
+    else:
+        org = get_user_data('organizations', orgadd)
+        org = binascii.unhexlify(org).decode()
+        org = org.split(":")[0]
+    if role == "organization":
+        status = org_status(orgadd)
+    if request.method == 'POST' and request.FILES['csv_file']:
+        csv_file = request.FILES['csv_file']
+        if not csv_file.name.endswith('.csv'):
+            return HttpResponseBadRequest('Invalid file format. Please upload a CSV file.')
+        
+        # Process the CSV file
+        file = pd.read_csv(csv_file).iloc[:,[0,1,2,3]]
+        gene = file['Gene'].tolist()
+        drugid = file['Drugs'].tolist()
+        iscore = file['Interaction Score'].tolist()
+        annot = file['Annotation'].tolist()
         name = request.POST.get('name')
         address = request.POST.get('address')
-        gene = request.POST.get('gene')
-        drugid = request.POST.get('drug')
-        iscore = request.POST.get('iscore')
-        annot = request.POST.get('annot')
+
         uploaded_by = org
         if not check_address(address) and not check_name(name):
             messages.error(request, "Address and name not found.")
@@ -256,9 +284,10 @@ def upload_data(request):
             messages.error(request, "Name not found.")
             return redirect('upload_data')
         else:
-            data = f"{name}:{address}:{gene}:{drugid}:{iscore}:{annot}:{uploaded_by}"
-            data_hex = binascii.hexlify(data.encode()).decode()
-            publish_to_stream_from_address(orgadd,'pgx_data', address, data_hex)
+            for i in range(len(file)):
+                data = f"{name}:{address}:{gene[i]}:{drugid[i]}:{iscore[i]}:{annot[i]}:{uploaded_by[i]}"
+                data_hex = binascii.hexlify(data.encode()).decode()
+                publish_to_stream_from_address(orgadd,'pgx_data', address, data_hex)
             messages.success(request, f"Patient {address} pgx data was uploaded.")
             return HttpResponseRedirect(reverse('upload_data'))
 
@@ -283,13 +312,13 @@ def manage_access_view(request):
     return render(request, 'manage_access.html', {'requesters':requesters, "role":role, 'status': status})
   
 @role_required("Patient")
-def grant_data_access(request, requester_address, data_id, purpose):
+def grant_data_access(request, organization, data_id, purpose):
     address = request.session.get('address')
     if request.method == 'POST':
         try:
-            grant_access(address,requester_address,data_id, purpose)
-            messages.success(request, f"You have granted {requester_address} access to your data.")
-            return redirect('patient_request')
+            grant_access(address,organization,data_id, purpose)
+            messages.success(request, f"You have granted {organization} access to your data for the research/clinical trial {purpose}.")
+            return redirect('manage_access')
         except Exception as e:
             messages.error(request, str(e))
             return redirect('patient_request')
@@ -298,13 +327,28 @@ def grant_data_access(request, requester_address, data_id, purpose):
         return redirect('patient_request')
     
 @role_required("Patient")    
-def revoke_data_access(request, requester_address, data_id, purpose):
+def revoke_data_access(request, organization, data_id, purpose):
     address = request.session.get('address')
     if request.method == 'POST':
         try:
-            revoke_access(address,requester_address,data_id, purpose)
-            messages.success(request, f"You have revoked {requester_address} access to your data.")
+            revoke_access(address,organization,data_id, purpose)
+            messages.success(request, f"You have revoked access of {organization} for {purpose}")
+            return redirect('manage_access')
+        except Exception as e:
+            messages.error(request, str(e))
             return redirect('patient_request')
+    else:
+        messages.error(request, "Invalid Request")
+        return redirect('patient_request')
+    
+@role_required("Patient")    
+def deny_data_access(request, organization, data_id, purpose):
+    address = request.session.get('address')
+    if request.method == 'POST':
+        try:
+            deny_access(address,organization,data_id, purpose)
+            messages.success(request, f"You have denied access to {organization} for {purpose}")
+            return redirect('manage_access')
         except Exception as e:
             messages.error(request, str(e))
             return redirect('patient_request')
@@ -338,22 +382,21 @@ def request_view(request):
     if drug:
         filtered_patients = [t for t in filtered_patients if t.get('drugid') == drug]
     patients = filtered_patients
-    dat = []
     for patient in patients:
         data = patient['dataid']
-        items = get_status('access_control', address)
+        items = get_status('access_tx', address)
+        in_list = False
         if items:
             for item in items:
                 item = item['data']
                 item = binascii.unhexlify(item).decode()
                 item = json.loads(item)
-                if item['data_id'] != data:
-                    dat.append(data)
-        else:
-            dat.append(data)
-    patient_and_data = list(zip(patients,dat))
-
-    context = {'pd':patient_and_data, "role":role, 'status': status, 'drugs':select_drug, 'genes':select_gene}
+                if item['data_id'] == data:
+                    in_list = True
+                    continue
+        if in_list:
+            patients.remove(patient)        
+    context = {'pd':patients, "role":role, 'status': status, 'drugs':select_drug, 'genes':select_gene}
     return render(request, 'request_view.html', context)
 
 
@@ -364,24 +407,35 @@ def request_data(request):
     user_data = get_user_data('requester-test',user)
     if not user_data:
         user_data = get_user_data('requester-test',address)
-    data_str = binascii.unhexlify(user_data).decode()
-    name, org, add= data_str.split(':')
+        data_str = binascii.unhexlify(user_data).decode()
+        name, org, add= data_str.split(':')
+    else:
+        data_str = binascii.unhexlify(user_data).decode()
+        name, org= data_str.split(':')
     if request.method == 'POST':
         purpose = request.POST.get('purpose')
         data_list = request.POST.getlist('selected_patients')
+        already_requested = len(data_list)
         for data in data_list:
             
             if data != '':
           
                 patient_address, data_id = data.split('|')
-                if check_request(address, patient_address):
-                    messages.error(request, f"You have already requested for {data_id}")
+                if check_request(purpose, patient_address):
+                    messages.error(request, f"Your request of {data_id} for {purpose} has already been sent")
+                    already_requested -= 1
                     continue
+                if check_deny(org, purpose):
+                    messages.error(request, f"Your request of {data_id} for {purpose} has been denied")
+                    already_requested -= 1
+                    continue
+
                 req_data = {'name':name, 'organization':org,'requester':address,'data':data_id, 'purpose':purpose,'status': 'waitlisted'}
                 data_hex = binascii.hexlify(json.dumps(req_data).encode()).decode()
             
                 publish_request(address, 'request-data', patient_address, data_hex)
-        messages.success(request, f"Your request/s has/have been sent")
+        if already_requested > 1:
+            messages.success(request, f"Your request/s has/have been sent")
         return redirect('request_view')
              
     else:
@@ -393,7 +447,35 @@ def view_data_table(request):
     status = ""
     role = request.session.get('role')
     data = get_all_granted(request.session.get("address"))
-    return render(request, "data_table.html", {'data':data, "role":role, 'status': status}) 
+    return render(request, "data_table.html", {'data':data, "role":role, 'status': status})
+
+@role_required("requester")
+def download_data(request):
+    # Get the accessed data for the requester
+    accessed_data = get_all_granted(request.session.get("address"))
+
+    # Prepare the data as a table
+    table_data = []
+    headers = ["Name", "Address", "Gene", "Drug/s", "Interaction Score", "Annotation"] 
+    table_data.append(headers)
+    for data in accessed_data:
+        table_data.append([data['name'], data['address'], data['gene'], data['drugid'], data['iscore'], data['annot']])  # Replace with your actual data fields
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="pgx_data.csv"'
+
+    writer = csv.writer(response)
+    writer.writerows(table_data)
+
+    return response
+
+
+@role_required("Patient")
+def view_data_table_patient(request):
+    status = ""
+    role = request.session.get('role')
+    data = get_all_data(request.session.get("address"))
+    return render(request, "data_table_patient.html", {'data':data, "role":role, 'status': status})
 
 @role_required("Auditor")
 def transaction_view(request):
@@ -402,26 +484,19 @@ def transaction_view(request):
     role = request.session.get('role')
     transactions = transactions[::-1]
     select_patient= []
-    select_requester= []
     select_access = []
     for t in transactions:
         patient = t.get('patient_address')
-        requester = t.get('requester_address')
         access = t.get('access_level')
         if patient not in select_patient:
             select_patient.append(patient)
-        if requester not in select_requester:
-            select_requester.append(requester)
         if access not in select_access:
             select_access.append(access)
     filtered_transactions = transactions
     patient_address = request.GET.get('patient_address')
-    requester_address = request.GET.get('requester_address')
     access_level = request.GET.get('access_level')
     if patient_address:
         filtered_transactions = [t for t in filtered_transactions if t.get('patient_address') == patient_address]
-    if requester_address:
-        filtered_transactions = [t for t in filtered_transactions if t.get('requester_address') == requester_address]
     if access_level:
         filtered_transactions = [t for t in filtered_transactions if t.get('access_level') == access_level]
         
@@ -430,7 +505,6 @@ def transaction_view(request):
         "role":role, 
         'status': status, 
         'patients':select_patient, 
-        'requesters':select_requester, 
         'access':select_access,
         }    
     return render(request, 'transactions.html', context)
@@ -477,11 +551,30 @@ def patient_transaction_view(request):
         }   
     return render(request, 'transactions_patient.html', context)
 
-@role_required("requester")
-def requester_transaction_view(request):
+@role_required("organization", "requester")
+def org_transaction_view(request):
     status = ""
+    user = request.session.get('user')
+    role = request.session.get('role')
     address = request.session.get('address')
-    transactions = get_tx_requester(address)
+    if role == 'requester':
+        req = get_user_data('requester-test', address)
+        req_str = binascii.unhexlify(req).decode()
+        name = req_str.split(':')[1]
+        add = get_publisher_address('requester-test', address)
+        address = add
+        print(user,address)
+    else:
+        user_data = get_user_data('organizations', user)
+        if not user_data:
+            user_data = get_user_data('organizations', address)
+        data_str = binascii.unhexlify(user_data).decode()
+        name = data_str.split(':')[0]
+    orgrequest = get_user_data('org_request', address)
+    status_hex = binascii.unhexlify(orgrequest).decode()
+    status_hex = json.loads(status_hex)
+    status = status_hex['status']
+    transactions = get_tx_org(name)
     role = request.session.get('role')
     transactions = transactions[::-1]
     select_patient= []

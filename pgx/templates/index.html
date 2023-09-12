@@ -25,13 +25,14 @@
                     {% if role == "Patient" %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'patient_request' %}">Check Requests</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'manage_access' %}">Manage</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'data_table_patient' %}">View Data</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Account</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'patient_trans_view' %}">View Transactions</a></li>
                     {% elif role == "requester" %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'data_table' %}">View Data</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'request_view' %}">Request</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'org_trans_view' %}">View Transactions</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Account</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'requester_trans_view' %}">View Transactions</a></li>
                     {% elif role == "Auditor" %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'view_trans' %}">View Transactions</a></li>
                     {% else %}
@@ -41,6 +42,7 @@
                         {% if status == "permissions granted" or role == "admin" %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'upload_data' %}">Upload Data</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'create_user' %}">Create User</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'org_trans_view' %}">View Transactions</a></li>
                         {% endif %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Account</a></li>
                     {% endif %}
@@ -66,7 +68,7 @@
             });
 
             // Automatically disappear after 5 seconds
-            $(".msg").delay(50000).fadeOut("slow");
+            $(".msg").delay(5000).fadeOut("slow");
         });
     </script>
     {% block extrascripts %}

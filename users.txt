@@ -1,10 +1,22 @@
 users:
 admin
-gab
+
 requester1
-auditor1
+mercs01
+icare
 umbr0001
+
 albwesk
-jillval
 birkin01
 mdrequester
+escobar
+
+
+gab
+jillval
+chredfield 1GPu7qLgtor9x4KDPrW5BZfME1FaZwaK3a5zPW
+ada01 19HK17UxkFoyd8emGXSLSKCzkeiuwYDXzPnDrj
+rmcdonald 1RKoFVmZNgPkDcR5si3qhr4jThE1Lc4MFfLK5Y
+flnrdr 1YY8TJT1RGvgPajf7oWR5p4F34gmUrPPRJzm6d
+
+auditor1

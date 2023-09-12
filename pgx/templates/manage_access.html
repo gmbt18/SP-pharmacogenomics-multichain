@@ -6,8 +6,6 @@
     <table id ='booking-table' class="table ">
         <thead>
         <tr>
-            <th scope="col" class = "text-center">Name</th>
-            <th scope="col" class = "text-center">Address</th>
             <th scope="col" class = "text-center">Organization</th>
             <th scope="col" class = "text-center">Data</th>
             <th scope="col" class = "text-center">Purpose</th>
@@ -19,39 +17,61 @@
         <tbody>
         {% for req in requesters%}
         <tr>
-            <td class = "py-3 text-center">{{req.name}}</td>
-            <td class = "py-3 text-center">{{req.address}}</td>
             <td class = "py-3 text-center">{{req.organization}}</td>
             <td class = "py-3 text-center">{{req.data}}</td>
             <td class = "py-3 text-center">{{req.purpose}}</td>
-            <td class = "py-3 pl-5 text-center">
-                <form method="post" action="{% url 'grant_access' req.address req.data req.purpose %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="patient_address" value="{{ req.address }}">
-                    <input type="hidden" name="patient_address" value="{{ req.data }}">
-                    <input type="hidden" name="patient_address" value="{{ req.purpose }}">
-                    {% if req.status == 'grant' %}
-                        <button class="btn btn-success text-center disabled" type="submit">Grant</button>
-                    {% else %}
-                        <button class="btn btn-success text-center" type="submit">Grant</button>
-                    {% endif %}
-                </form>
+            <td class = "py-3 text-center">
+                <a class="btn btn-primary text-center border border-dark" href="#" role="button" data-bs-toggle="modal" data-bs-target="#viewrequesters">View Users</a>
             </td>
-            <td class = "py-3 pl-5 text-center">
-                <form method="post" action="{% url 'revoke_access' req.address req.data req.purpose %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="patient_address" value="{{ req.address }}">
-                    <input type="hidden" name="patient_address" value="{{ req.data }}">
-                    {% if req.status == 'grant' %}
-                        <button class="btn btn-danger text-center" type="submit">Revoke</button>
-                    {% else %}
-                        <button class="btn btn-danger text-center disabled" type="submit">Revoke</button>
-                    {% endif %}
-                </form>
+                
+            </td>
+            <td class = "py-3 pl-1 text-center">
+                <a class="btn btn-danger text-center border border-dark" href="#" role="button" data-bs-toggle="modal" data-bs-target="#revokeModal">Revoke</a>
             </td>
             
         </tr>
+        <div class="modal fade" id="revokeModal" tabindex="-1" role="dialog" aria-labelledby="revokeModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="revokeModalLabel">Revoke Access</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                           
+                            <p> Are you sure you want to revoke access for this data?</p>
+                        <div class="modal-footer"> 
+                            <form method="post" action="{% url 'revoke_access' req.organization req.data req.purpose %}">
+                                {% csrf_token %}
+                                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">No</button>
+                                <button class="btn btn-success text-center" type="submit">Yes</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="viewrequesters" tab-index="-1">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Users who have access under {{req.organization}}</h5>
+                    <button type="button" class="btn btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% for user in req.requesters %}
+                        <p>{{user}}</p>
+                    {%endfor%}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fa-solid fa-x"></i> Exit</button>
+                </div>
+            </div>
+            </div>
+        </div> 
         {% endfor %}
+
         </tbody>
     </table>
 </div>

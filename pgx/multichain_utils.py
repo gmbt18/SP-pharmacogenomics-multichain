@@ -26,7 +26,6 @@ def get_all_patient_data(stream_name):
         stream_items = multichain_api.liststreamitems(stream_name, False, 256)
 
         patients = []
-        # for each item, check if it is a patient
         for item in stream_items:
             data_hex = item["data"]
             data_str = binascii.unhexlify(data_hex).decode()
@@ -44,7 +43,6 @@ def get_all_patient_data(stream_name):
             }
 
             patients.append(patient_data)
-
         return patients
     except Exception as e:
         print(f"Error fetching patients: {str(e)}")
@@ -69,10 +67,10 @@ def grant_requester_perm(address):
     multichain_api.grant(address, "activate")
     return multichain_api.grant(address, "request-data.write")
 
-def grant_requester_patient(address):
+def grant_patient_perm(address):
     multichain_api.grant(address, "activate")
     
-    return multichain_api.grant(address, "access_control.write")
+    return multichain_api.grant(address, "access_tx.write")
 
 def get_join_requests(stream_name):
     try:
@@ -89,7 +87,6 @@ def get_join_requests(stream_name):
 
             name = data_str.get("name", "org")
             status = data_str["status"]
-            print(status, prev_status, name, prev_name)
             if (
                 status == "No grants yet"
                 and prev_status != "permissions granted"
@@ -130,9 +127,9 @@ def get_all_requests(stream_name, patient_address):
             else:
                 purpose = data_str.get("purpose")
             
-            if check_grant(address):
-                status = 'granted'
-            
+            if check_grant(organization, data_id) or data_id == '':
+                status = 'grant/deny'
+
             if status == "waitlisted":
                 request = {
                     "name": name,
@@ -150,20 +147,63 @@ def get_all_requests(stream_name, patient_address):
         print(f"Error fetching patients: {str(e)}")
         return None
     
+def get_all_data(address):
+    patient_data = multichain_api.liststreamkeyitems('pgx_data', address)
+    data_array = []
+    for d in patient_data:
+        d_hex = d["data"]
+        d_str = binascii.unhexlify(d_hex).decode()
+        name,address,gene,drug_id,iscore,annot,uploadedby= d_str.split(":") 
+        data_dict = {
+            "name": name, 
+            "address":address,
+            "gene":gene,
+            "drugid":drug_id,
+            "iscore":iscore,
+            "annot":annot,
+            "uploadedby":uploadedby,
+            }
+        data_array.append(data_dict)
+    return data_array
 
-def check_request(requester_address, patient_address):
+def check_request(purpose, patient_address):
     request = multichain_api.liststreamkeyitems("request-data", patient_address)
     if request:
         for r in request:
-            publisher = r["publishers"][0]
-            if publisher == requester_address:
+            data = r["data"]
+            d_str = binascii.unhexlify(data).decode()
+            d = json.loads(d_str)
+            p = d.get('purpose')
+            if p == purpose:
                 return True
     return False
 
-def check_grant(address):
-    grant = multichain_api.liststreamkeyitems("access_control", address)
-    if grant:
-        return True
+def check_grant(organization, dataid):
+    grants = multichain_api.liststreamkeyitems("access_tx", organization)
+    if grants:
+        for grant in grants:
+            grant = grant['data']
+            grant = binascii.unhexlify(grant).decode()
+            grant = json.loads(grant)
+            data = grant.get('data_id')
+            if dataid == data:
+                return True
+        return False
+    else: 
+        return False
+    
+def check_deny(organization, purpose):
+    access = multichain_api.liststreamkeyitems("access_tx", organization)
+    if access:
+        for deny in access:
+            deny = deny['data']
+            deny = binascii.unhexlify(denyu).decode()
+            deny = json.loads(deny)
+            p = deny.get('purpose')
+            status = deny.get('access_level')
+            if p == purpose and status == 'deny': 
+                return True
+        return False
     else: 
         return False
     
@@ -180,15 +220,18 @@ def check_address(address):
     return False
 def check_name(name):
     stream_items = multichain_api.liststreamitems('patients', False, 256)
-
+    isnamesame = False
     for item in stream_items:
         data_hex = item["data"]
         data_str = binascii.unhexlify(data_hex).decode()
         patient_name= data_str.split(":")[0]
-        if  patient_name == name:
-            return True
-        else:
-            return False
+        print(patient_name,name)
+        if patient_name == name:
+            isnamesame = True
+    if isnamesame:
+        return True
+    else:
+        return False
 
 def publish_to_stream_from_address(org, stream_name, key, hex_data):
     options = "offchain"
@@ -199,8 +242,13 @@ def publish_request(requester, stream_name, key, hex_data):
     options = "offchain"
     return multichain_api.publishfrom(requester, stream_name, key, hex_data, options)
     #return multichain_api.publish(stream_name, key, hex_data, options)
+
 def get_all_granted(requester_address):
-    grant = multichain_api.liststreamkeyitems('access_control', requester_address)
+    req = multichain_api.liststreamkeyitems('requester-test', requester_address)
+    req = req[0]['data']
+    req = binascii.unhexlify(req).decode()
+    org = req.split(":")[1]
+    grant = multichain_api.liststreamkeyitems('access_tx', org)
     data_map = {}
     for item in grant:
         grant_data = item["data"]
@@ -235,13 +283,15 @@ def get_all_granted(requester_address):
     return p_data     
 
 def getallrequesterswithaccess(patient_address):
-    grant = multichain_api.liststreamitems('access_control', False, 256)
+    grant = multichain_api.liststreamitems('access_tx', False, 256)
     data_map = {}
-    for item in grant:
+    temp = ''
+    for item in reversed(grant):
         grant_data = item["data"]
         data_str = binascii.unhexlify(grant_data).decode()
         data_str = json.loads(data_str)
         address = data_str["patient_address"]
+        requesters = []
         if address == patient_address:
             status = data_str["access_level"]
             data = data_str["data_id"]
@@ -249,60 +299,74 @@ def getallrequesterswithaccess(patient_address):
                 purpose = "Research"
             else:
                 purpose = data_str.get("purpose")
-            requester_address = data_str["requester_address"]
-            requester_data = multichain_api.liststreamkeyitems('requester-test', requester_address)
-            if not requester_data:
-                requester_data = multichain_api.liststreamkeyitems('requester-test', 'requester1')
-                requester_hex = requester_data[0]["data"]
-                requester_str = binascii.unhexlify(requester_hex).decode()
-                print(requester_str)
-                name, org = requester_str.split(":")
-            elif requester_data:
-                requester_hex = requester_data[0]["data"]
-                requester_str = binascii.unhexlify(requester_hex).decode()
-                print(requester_str)
-                name, org, addr = requester_str.split(":")   
-                
-            data_dict = {
-                "name": name, 
-                "address": requester_address,
-                "organization": org,
-                "data": data,
-                "purpose":purpose,
-                "status": status,
-            }
-            data_map[requester_address] = data_dict
-
+            org = data_str["org"]
+            reqorg = multichain_api.liststreamitems('requester-test', False, 256)
+            for req in reqorg:
+                reqhex = req['data']
+                req = binascii.unhexlify(reqhex).decode()
+                organization = req.split(':')[1]
+                name = req.split(':')[0]
+                if organization == org:
+                    requesters.append(name)
+            if status == "grant" and org!=temp:
+                data_dict = {
+                    "organization": org,
+                    "requesters": requesters,
+                    "data": data,
+                    "purpose":purpose,
+                    "status": status,
+                }
+                data_map[org] = data_dict
+            elif status == "revoke":
+                temp = org
+    
     access_data = list(data_map.values())
+    print(access_data)
     return access_data    
 
-def grant_access(patient_address, requester_address, data_id, purpose):
+def grant_access(patient_address, org, data_id, purpose):
     # Prepare the data
     access_data = {
         "patient_address": patient_address,
-        "requester_address": requester_address,
+        "org": org,
         "data_id": data_id,
         "purpose": purpose,
         "timestamp": datetime.now().isoformat(),
-        "access_level": "grant",  # or whatever access level is appropriate
+        "access_level": "grant",  
     }
-    # Convert to hex to publish on the blockchain
-    data_hex = binascii.hexlify(json.dumps(access_data).encode()).decode()
-    return multichain_api.publishfrom(patient_address,"access_control", requester_address, data_hex)
+    json_data = json.dumps(access_data)
+    hex_data = json_data.encode().hex()
+    return multichain_api.publishfrom(patient_address,"access_tx", org, hex_data)
 
-def revoke_access(patient_address, requester_address, data_id, purpose):
+def deny_access(patient_address, org, data_id, purpose):
     # Prepare the data
     access_data = {
         "patient_address": patient_address,
-        "requester_address": requester_address,
+        "org": org,
         "data_id": data_id,
         "purpose":purpose,
         "timestamp": datetime.now().isoformat(),
-        "access_level": "revoke",  # or whatever access level is appropriate
+        "access_level": "deny",  
     }
     # Convert to hex to publish on the blockchain
-    data_hex = binascii.hexlify(json.dumps(access_data).encode()).decode()
-    return multichain_api.publishfrom(patient_address,"access_control", requester_address, data_hex)
+    json_data = json.dumps(access_data)
+    hex_data = json_data.encode().hex()
+    return multichain_api.publishfrom(patient_address,"access_tx", org, hex_data)
+
+def revoke_access(patient_address, org, data_id, purpose):
+    # Prepare the data
+    access_data = {
+        "patient_address": patient_address,
+        "org": org,
+        "data_id": data_id,
+        "purpose":purpose,
+        "timestamp": datetime.now().isoformat(),
+        "access_level": "revoke",  
+    }
+    # Convert to hex to publish on the blockchain
+    json_data = json.dumps(access_data)
+    hex_data = json_data.encode().hex()
+    return multichain_api.publishfrom(patient_address,"access_tx", org, hex_data)
 
 def generate_salt():
     return secrets.token_hex(32)
@@ -329,21 +393,28 @@ def get_user_data(stream_name, key):
         data = items[0]["data"]
         return data
     return None
+
+def get_publisher_address(stream_name, key):
+    items = multichain_api.liststreamkeyitems(stream_name, key)
+    if items:
+        publisher = items[0]['publishers'][0]
+        return publisher
+    return None
 def get_status(stream_name, key):
     items = multichain_api.liststreamkeyitems(stream_name, key)
     if items:
         return items
     return None
 def get_access_control_tx():
-    tx = multichain_api.liststreamitems('access_control', False, 256)
+    tx = multichain_api.liststreamitems('access_tx', False, 256)
     datalist = []
     for item in tx:
         txid = item['txid']
         data = item['data']
-        data = binascii.unhexlify(data).decode()
+        data = bytes.fromhex(data).decode('utf-8')
         data = json.loads(data)
         p_address = data['patient_address']
-        r_address = data['requester_address']
+        r_address = data['org']
         dataid = data['data_id']
         if not data.get("purpose"):
             purpose = "Research"
@@ -356,7 +427,7 @@ def get_access_control_tx():
         data_dict = {
             "txid": txid,
             "patient_address": p_address,
-            "requester_address": r_address,
+            "org": r_address,
             "dataid":dataid,
             "purpose": purpose,
             "timestamp":timestamp,
@@ -365,13 +436,14 @@ def get_access_control_tx():
         datalist.append(data_dict)
     return datalist
 
-def get_tx_requester(address):
-    tx = multichain_api.liststreamkeyitems('access_control', address)
+def get_tx_org(name):
+    tx = multichain_api.liststreamkeyitems('access_tx', name)
+    print(tx)
     datalist = []
     for item in tx:
         txid = item['txid']
         data = item['data']
-        data = binascii.unhexlify(data).decode()
+        data = bytes.fromhex(data).decode('utf-8')
         data = json.loads(data)
         p_address = data['patient_address']
         dataid = data['data_id']
@@ -400,27 +472,16 @@ def get_tx_requester(address):
     return datalist
 
 def get_tx_patient(address):
-    tx = multichain_api.liststreamitems('access_control', False, 256)
+    tx = multichain_api.liststreamitems('access_tx', False, 256)
     datalist = []
     for item in tx:
         txid = item['txid']
         data = item['data']
-        data = binascii.unhexlify(data).decode()
+        data = bytes.fromhex(data).decode('utf-8')
         data = json.loads(data)
+        print(data)
         p_address = data['patient_address']
-        r_address = data['requester_address']
-        requester_data = multichain_api.liststreamkeyitems('requester-test', r_address)
-        if not requester_data:
-            requester_data = multichain_api.liststreamkeyitems('requester-test', 'requester1')
-            requester_hex = requester_data[0]["data"]
-            requester_str = binascii.unhexlify(requester_hex).decode()
-            print(requester_str)
-            name, org = requester_str.split(":")
-        elif requester_data:
-            requester_hex = requester_data[0]["data"]
-            requester_str = binascii.unhexlify(requester_hex).decode()
-            print(requester_str)
-            name, org, addr = requester_str.split(":")
+        org = data['org']
         dataid = data['data_id']
         timestamp = data['timestamp']
         if not data.get("purpose"):
@@ -433,7 +494,6 @@ def get_tx_patient(address):
         if address == p_address:
             data_dict = {
                 "txid": txid,
-                "name": name,
                 "org": org,
                 "dataid":dataid,
                 "purpose": purpose,

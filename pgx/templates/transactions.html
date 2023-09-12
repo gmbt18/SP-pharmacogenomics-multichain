@@ -16,15 +16,6 @@
                     {%endfor%}
                 </select>
             </div>
-            <div class="col">
-                <label for="patient_address">Requester Address:</label>
-                <select class="form-select" name="requester_address" aria-label="Default select example">
-                    <option value = "None" selected disabled hidden>-----------</option>
-                    {%for requester in requesters %}
-                    <option value="{{requester}}">{{requester}}</option>
-                    {%endfor%}
-                </select>
-            </div>
         
             <div class="col">
                 <label for="access_level">Access Level:</label>
@@ -47,7 +38,7 @@
             <tr>
                 <th scope="col" class = "text-center">Txid</th>
                 <th scope="col" class = "text-center">Patient Address</th>
-                <th scope="col" class = "text-center">Requester Address</th>
+                <th scope="col" class = "text-center">Organization</th>
                 <th scope="col" class = "text-center">Data</th>
                 <th scope="col" class = "text-center">Purpose</th>
                 <th scope="col" class = "text-center">Access</th>
@@ -59,7 +50,7 @@
             <tr>
                 <td class = "py-3 px-3 text-center">{{tx.txid}}</td>
                 <td class = "py-3 px-3 text-center">{{tx.patient_address}}</td>
-                <td class = "py-3 px-3 text-center">{{tx.requester_address}}</td>
+                <td class = "py-3 px-3 text-center">{{tx.org}}</td>
                 <td class = "py-3 px-3 text-center">{{tx.dataid}}</td>
                 <td class = "py-3 px-3 text-center">{{tx.purpose}}</td>
                 <td class = "py-3 px-3 text-center">{{tx.access_level}}</td>
